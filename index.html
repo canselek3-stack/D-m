@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KnotOrNot / Düğüm Çözücü — Topolojik İzotopi & Reidemeister Oyunu</title>
+  <meta name="description" content="Düğüm kuramı (knot theory), Reidemeister hamleleri ve topolojik eşdeğerliği (izotopi) keşfetmenizi sağlayan interaktif bilim ve bulmaca oyunu.">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Outfit:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header / Navigation Bar -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 36 36" width="32" height="32" fill="none">
+          <circle cx="18" cy="18" r="14" stroke="url(#logo-grad)" stroke-width="3.5" stroke-dasharray="28 8"/>
+          <path d="M12 24 C 18 10, 18 26, 24 12" stroke="url(#logo-grad2)" stroke-width="3.5" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#38bdf8"/>
+              <stop offset="100%" stop-color="#818cf8"/>
+            </linearGradient>
+            <linearGradient id="logo-grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f43f5e"/>
+              <stop offset="100%" stop-color="#fb923c"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>KnotOrNot <span class="badge">Düğüm Çözücü</span></h1>
+        <p class="tagline">Topolojik İzotopi & Reidemeister Hamleleri</p>
+      </div>
+    </div>
+
+    <!-- Center: Level Selector -->
+    <div class="level-nav">
+      <button id="prev-level-btn" class="nav-arrow-btn" title="Önceki Seviye">‹</button>
+      <div class="level-indicator">
+        <span class="level-label">BÖLÜM</span>
+        <span id="current-level-title" class="level-title">Seviye 1: Açılan Halka</span>
+      </div>
+      <button id="next-level-btn" class="nav-arrow-btn" title="Sonraki Seviye">›</button>
+      <div class="level-dropdown-wrap">
+        <button id="level-list-toggle" class="btn-ghost icon-only" title="Tüm Bölümler">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div id="level-dropdown" class="dropdown-menu hidden">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <button id="btn-reidemeister-guide" class="btn-pill" title="Reidemeister Hamleleri Rehberi">
+        <span class="pill-icon">📐</span>
+        <span class="pill-text">Hamleler (R1, R2, R3)</span>
+      </button>
+      <button id="btn-math-inspector" class="btn-pill" title="Topolojik Değişmezler & Jones Polinomu">
+        <span class="pill-icon">🧮</span>
+        <span class="pill-text">Matematik Paneli</span>
+      </button>
+      <button id="btn-sound-toggle" class="btn-icon" title="Ses Aç/Kapat">
+        <span id="sound-icon">🔊</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Game Layout -->
+  <main class="main-container">
+    <!-- Left: Interactive Canvas Workspace -->
+    <section class="workspace-panel">
+      <!-- Workspace Top Bar -->
+      <div class="workspace-header">
+        <div class="panel-tag">
+          <span class="live-dot"></span>
+          <span>ÇALIŞMA ALANI (İNTERAKTİF DÜĞÜM)</span>
+        </div>
+        <div class="knot-metrics">
+          <div class="metric-pill" title="Mevcut Kesişim Noktası Sayısı">
+            <span class="metric-name">Kesişim (c):</span>
+            <span id="crossing-count" class="metric-value">3</span>
+          </div>
+          <div class="metric-pill" title="Toplam Hamle Sayısı">
+            <span class="metric-name">Hamle:</span>
+            <span id="move-count" class="metric-value">0</span>
+          </div>
+          <div class="metric-pill" title="Kendi Etrafındaki Burgu (Writhe)">
+            <span class="metric-name">Writhe (w):</span>
+            <span id="writhe-val" class="metric-value">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas Area -->
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="knot-canvas"></canvas>
+
+        <!-- Dynamic Reidemeister Move Toast Badge -->
+        <div id="reidemeister-toast" class="reidemeister-toast hidden">
+          <div class="toast-icon" id="toast-icon">✨</div>
+          <div class="toast-content">
+            <div class="toast-title" id="toast-title">Reidemeister I Hamlesi</div>
+            <div class="toast-desc" id="toast-desc">Tekli kıvrım çözüldü (-1 kesişim)</div>
+          </div>
+        </div>
+
+        <!-- Hint Guidance Banner / Step Instruction -->
+        <div id="hint-banner" class="hint-banner hidden">
+          <div class="hint-step-indicator">
+            <span class="hint-badge">İPUCU MODU</span>
+            <span id="hint-step-text">1. Hamle: Yeşil ile işaretli noktayı dışarı çek (R1 hamlesi)</span>
+          </div>
+          <button id="btn-close-hint" class="hint-close-btn" title="İpucunu Gizle">✕</button>
+        </div>
+
+        <!-- Interactive Canvas Overlay Controls -->
+        <div class="canvas-floating-controls">
+          <button id="btn-snap-smooth" class="floating-btn" title="İpi Yumuşat / Otomatik Düzelt">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>Gerilimi Dengele</span>
+          </button>
+          <button id="btn-add-crossing-mode" class="floating-btn" title="Kesişim Katmanını Değiştir (Üst/Alt)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"/></svg>
+            <span>Kesişim Geçişi (Üst/Alt)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Interactive Toolbar -->
+      <footer class="workspace-toolbar">
+        <div class="toolbar-left">
+          <button id="btn-reset" class="btn-action secondary" title="Bölümü Baştan Başlat">
+            <span class="btn-icon-svg">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </span>
+            <span>Sıfırla</span>
+          </button>
+          <button id="btn-tangle" class="btn-action secondary" title="Reidemeister hamleleriyle biraz karıştır">
+            <span class="btn-icon-svg">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </span>
+            <span>Rastgele Dolan</span>
+          </button>
+        </div>
+
+        <div class="toolbar-center">
+          <button id="btn-hint" class="btn-action warning" title="Adım Adım İpucu Al">
+            <span class="btn-icon-svg">💡</span>
+            <span>İpucu Al</span>
+          </button>
+          <button id="btn-auto-solve" class="btn-action info" title="Otomatik Reidemeister Çözüm Animasyonunu İzle">
+            <span class="btn-icon-svg">🎬</span>
+            <span>Çözümü Oynat</span>
+          </button>
+        </div>
+
+        <div class="toolbar-right">
+          <button id="btn-check-isotopy" class="btn-action primary pulse" title="Düğümün hedefle aynı izotopide olup olmadığını kontrol et">
+            <span class="btn-icon-svg">✨</span>
+            <span>Doğrula & Kontrol Et</span>
+          </button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- Right: Target Knot & Level Mission Panel -->
+    <aside class="sidebar-panel">
+      <!-- Target Knot Card -->
+      <div class="card target-card">
+        <div class="card-header">
+          <span class="card-sub">HEDEF REFERANS</span>
+          <h2 id="target-knot-name" class="target-title">Önemsiz Düğüm (Unknot)</h2>
+          <span class="target-symbol" id="target-knot-notation">0₁</span>
+        </div>
+
+        <div class="target-canvas-box">
+          <canvas id="target-canvas" width="220" height="180"></canvas>
+          <div class="target-status-badge" id="target-status-badge">
+            <span class="status-icon">🎯</span>
+            <span id="target-status-text">Hedef Bekleniyor</span>
+          </div>
+        </div>
+
+        <div class="target-info-row">
+          <div class="info-cell">
+            <span class="cell-label">Hedef Kesişim:</span>
+            <span id="target-crossings" class="cell-val">0</span>
+          </div>
+          <div class="info-cell">
+            <span class="cell-label">Jones V(t):</span>
+            <span id="target-jones" class="cell-val">1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Level Mission / Story Card -->
+      <div class="card story-card">
+        <div class="card-header">
+          <span class="card-sub">GÖREV SENARYOSU</span>
+          <h3 id="story-title" class="story-title">Açılan Halka</h3>
+        </div>
+        <p id="story-description" class="story-desc">
+          "Bu ip yumağı gerçekten bağlı mı, yoksa sadece dolanmış mı? Çizgileri sürükleyerek çözmeyi dene!"
+        </p>
+
+        <div class="mission-checklist">
+          <div class="check-item" id="check-r1">
+            <span class="check-bullet">○</span>
+            <span class="check-text">Kıvrımları R1 hamlesiyle aç</span>
+          </div>
+          <div class="check-item" id="check-crossings">
+            <span class="check-bullet">○</span>
+            <span class="check-text">Kesişim sayısını hedefe düşür</span>
+          </div>
+          <div class="check-item" id="check-isotopy">
+            <span class="check-bullet">○</span>
+            <span class="check-text">Topolojik eşdeğerliği sağla</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Topological Invariant Live Card -->
+      <div class="card math-card">
+        <div class="card-header">
+          <span class="card-sub">TOPOLOJİK DEĞİŞMEZLER</span>
+          <span class="live-tag">CANLI</span>
+        </div>
+        <div class="invariant-display">
+          <div class="formula-row">
+            <span class="formula-name">Jones Polinomu V(t):</span>
+            <span id="live-jones" class="formula-val">1</span>
+          </div>
+          <div class="formula-row">
+            <span class="formula-name">Kauffman Parantezi &lang;K&rang;:</span>
+            <span id="live-bracket" class="formula-val">A + A⁻¹</span>
+          </div>
+          <div class="formula-row">
+            <span class="formula-name">Alexander Polinomu Δ(t):</span>
+            <span id="live-alexander" class="formula-val">1</span>
+          </div>
+        </div>
+        <div class="math-explainer">
+          <span>ℹ️ Jones Polinomu düğümün 'parmak izidir'. İzotopik dönüşümlerde değişmez!</span>
+        </div>
+      </div>
+
+      <!-- Quick Reidemeister Reminder Cards -->
+      <div class="card mini-guide-card">
+        <div class="card-header">
+          <span class="card-sub">REIDEMEISTER ÖZETİ</span>
+        </div>
+        <div class="quick-reid-list">
+          <div class="quick-reid-item">
+            <span class="reid-badge r1">R1</span>
+            <div class="reid-text">
+              <strong>Kıvrılma / Açılma:</strong> Tekli halkayı çekip düzle. (Δc = ±1)
+            </div>
+          </div>
+          <div class="quick-reid-item">
+            <span class="reid-badge r2">R2</span>
+            <div class="reid-text">
+              <strong>Üst üste binme / Ayrılma:</strong> İki çizgiyi ayır. (Δc = ±2)
+            </div>
+          </div>
+          <div class="quick-reid-item">
+            <span class="reid-badge r3">R3</span>
+            <div class="reid-text">
+              <strong>Üçlü Geçiş:</strong> Çizgiyi kesişimin altından kaydır. (Δc = 0)
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Reidemeister Moves Guide Modal -->
+  <div id="modal-reidemeister" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-category">DÜĞÜM KURAMI TEMELLERİ</span>
+          <h2>Reidemeister Teoremi (1927)</h2>
+        </div>
+        <button id="btn-close-modal-reidemeister" class="modal-close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-intro">
+          Kurt Reidemeister, iki düğümün 3 boyutlu uzayda ipi kesmeden birbirine dönüştürülebilmesi (ortam izotopisi) için, 2 boyutlu projeksiyonlarında sadece <strong>3 temel yerel hamlenin</strong> yeterli olduğunu kanıtlamıştır:
+        </p>
+
+        <div class="reidemeister-showcase">
+          <!-- Move 1 -->
+          <div class="move-card">
+            <div class="move-header">
+              <span class="badge r1">Hamle I (R1)</span>
+              <h3>Kıvrılma / Açılma (Twist / Untwist)</h3>
+            </div>
+            <div class="move-diagram">
+              <svg viewBox="0 0 200 90" class="guide-svg">
+                <!-- Left: Loop -->
+                <path d="M20 70 C 40 70, 40 20, 60 20 C 80 20, 80 70, 70 70 C 50 70, 45 40, 70 40 C 95 40, 95 70, 110 70" stroke="#38bdf8" stroke-width="4" fill="none"/>
+                <!-- Arrow -->
+                <path d="M125 45 L145 45 M140 40 L145 45 L140 50" stroke="#94a3b8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <!-- Right: Straightened -->
+                <path d="M155 45 C 165 45, 175 45, 195 45" stroke="#38bdf8" stroke-width="4" fill="none"/>
+              </svg>
+            </div>
+            <p class="move-desc">
+              Bir ip parçasını kendi üzerine bükerek 1 kesişim yaratmak veya var olan bir bükümü çekerek düzeltmek. Kesişim değişimi: <strong>&plusmn;1</strong>.
+            </p>
+          </div>
+
+          <!-- Move 2 -->
+          <div class="move-card">
+            <div class="move-header">
+              <span class="badge r2">Hamle II (R2)</span>
+              <h3>Çakışma / Ayrılma (Poke / Unpoke)</h3>
+            </div>
+            <div class="move-diagram">
+              <svg viewBox="0 0 200 90" class="guide-svg">
+                <!-- Overlapping strands -->
+                <path d="M20 20 C 60 40, 60 60, 20 80" stroke="#f43f5e" stroke-width="4" fill="none"/>
+                <path d="M80 20 C 40 40, 40 60, 80 80" stroke="#38bdf8" stroke-width="4" fill="none"/>
+                <!-- Arrow -->
+                <path d="M100 45 L120 45 M115 40 L120 45 L115 50" stroke="#94a3b8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <!-- Separated strands -->
+                <path d="M140 20 C 145 40, 145 60, 140 80" stroke="#f43f5e" stroke-width="4" fill="none"/>
+                <path d="M180 20 C 175 40, 175 60, 180 80" stroke="#38bdf8" stroke-width="4" fill="none"/>
+              </svg>
+            </div>
+            <p class="move-desc">
+              Bir ip parçasını diğer bir ip parçasının tamamen üstünden veya altından kaydırıp ayırmak. Kesişim değişimi: <strong>&plusmn;2</strong>.
+            </p>
+          </div>
+
+          <!-- Move 3 -->
+          <div class="move-card">
+            <div class="move-header">
+              <span class="badge r3">Hamle III (R3)</span>
+              <h3>Üçlü Geçiş (Slide / Triangle Move)</h3>
+            </div>
+            <div class="move-diagram">
+              <svg viewBox="0 0 200 90" class="guide-svg">
+                <!-- Cross -->
+                <line x1="20" y1="20" x2="80" y2="80" stroke="#f43f5e" stroke-width="4"/>
+                <line x1="20" y1="80" x2="80" y2="20" stroke="#38bdf8" stroke-width="4"/>
+                <line x1="15" y1="50" x2="85" y2="50" stroke="#fbbf24" stroke-width="4"/>
+                <!-- Arrow -->
+                <path d="M100 45 L120 45 M115 40 L120 45 L115 50" stroke="#94a3b8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <!-- Cross slide -->
+                <line x1="130" y1="20" x2="190" y2="80" stroke="#f43f5e" stroke-width="4"/>
+                <line x1="130" y1="80" x2="190" y2="20" stroke="#38bdf8" stroke-width="4"/>
+                <line x1="125" y1="70" x2="195" y2="70" stroke="#fbbf24" stroke-width="4"/>
+              </svg>
+            </div>
+            <p class="move-desc">
+              Üçüncü bir ip parçasını, diğer iki ipin kesişim noktasının arkasından ya da önünden tamamen kaydırmak. Kesişim sayısı <strong>değişmez</strong> (Δc = 0).
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-reid-understood" class="btn-action primary">Anladım, Oyuna Dön</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Math & Knot Invariants Modal -->
+  <div id="modal-math" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-category">MATEMATİKSEL ARKA PLAN</span>
+          <h2>Düğüm Değişmezleri & Jones Polinomu</h2>
+        </div>
+        <button id="btn-close-modal-math" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="math-section">
+          <h3>Neden Düğümler Görünüşünden Anlaşılamaz?</h3>
+          <p>
+            Karmaşık görünen bir düğüm, yalnızca dolanmış bir çember (Unknot) olabilir. İki düğümün aynı olup olmadığını anlamak için topologlar <strong>Düğüm Değişmezleri (Knot Invariants)</strong> kullanır. Bu matematiksel ifadeler düğüm nasıl bükülürse bükülsün aynı kalır!
+          </p>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="knot-table">
+            <thead>
+              <tr>
+                <th>Düğüm Adı</th>
+                <th>Gösterim (Rolfsen)</th>
+                <th>Min. Kesişim</th>
+                <th>Jones Polinomu V(t)</th>
+                <th>Çözülebilir mi?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Önemsiz Düğüm (Unknot)</strong></td>
+                <td>0₁</td>
+                <td>0</td>
+                <td><code>1</code></td>
+                <td><span class="tag-success">Açık Çember</span></td>
+              </tr>
+              <tr>
+                <td><strong>Üç Yapraklı (Sağ Trefoil)</strong></td>
+                <td>3₁</td>
+                <td>3</td>
+                <td><code>t + t³ - t⁴</code></td>
+                <td><span class="tag-danger">Asla Açılmaz</span></td>
+              </tr>
+              <tr>
+                <td><strong>Sekiz Düğümü (Figure-8)</strong></td>
+                <td>4₁</td>
+                <td>4</td>
+                <td><code>t⁻² - t⁻¹ + 1 - t + t²</code></td>
+                <td><span class="tag-danger">Asla Açılmaz</span></td>
+              </tr>
+              <tr>
+                <td><strong>Beş Yapraklı (Cinquefoil)</strong></td>
+                <td>5₁</td>
+                <td>5</td>
+                <td><code>t² + t⁴ - t⁵ + t⁶ - t⁷</code></td>
+                <td><span class="tag-danger">Asla Açılmaz</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="math-section">
+          <h3>Kauffman Parantezi & Jones Polinomu İlişkisi</h3>
+          <p>
+            Louis Kauffman her kesişimi iki olası açılıma (A ve B düzleştirmeleri) ayırarak <code>&lang;K&rang;</code> durum toplamını kurmuştur. Bu toplam, düğümün yönlendirilmiş burgu değeri (writhe: $w$) ile dengelendiğinde ünlü <strong>Jones Polinomu $V(t)$</strong> elde edilir:
+          </p>
+          <div class="formula-box">
+            <code>X(K) = (-A³)⁻ʷ &lang;K&rang; &nbsp; &rarr; &nbsp; A = t⁻¹/⁴ konularak V(t) elde edilir.</code>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-math-understood" class="btn-action primary">Harika, Keşfetmeye Devam</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Win / Equivalence Success Modal -->
+  <div id="modal-win" class="modal-overlay hidden">
+    <div class="modal-card win-card">
+      <div class="win-header">
+        <div class="win-trophy-burst">🎉</div>
+        <h2>Tebrikler! Düğüm Doğrulandı!</h2>
+        <p id="win-subtitle" class="win-subtitle">Bu düğüm aslında hedefteki <strong>Önemsiz Düğüm (Unknot)</strong> ile topolojik olarak aynıydı!</p>
+      </div>
+
+      <div class="win-stats-grid">
+        <div class="win-stat-box">
+          <span class="stat-number" id="win-moves">2</span>
+          <span class="stat-label">Yapılan Hamle</span>
+        </div>
+        <div class="win-stat-box">
+          <span class="stat-number" id="win-crossings">0</span>
+          <span class="stat-label">Kalan Kesişim</span>
+        </div>
+        <div class="win-stat-box">
+          <span class="stat-number" id="win-reid-moves">R1, R2</span>
+          <span class="stat-label">Kullanılan Hamleler</span>
+        </div>
+      </div>
+
+      <div class="win-topology-box">
+        <div class="topo-icon">🧬</div>
+        <div class="topo-text">
+          <strong>İzotopi Eşitliği Doğrulandı:</strong>
+          <span id="win-polynomial-match">Jones Polinomu V_çalışma(t) ≡ V_hedef(t) = 1</span>
+        </div>
+      </div>
+
+      <div class="modal-footer win-footer">
+        <button id="btn-replay-level" class="btn-action secondary">Yeniden Oyna</button>
+        <button id="btn-next-level-win" class="btn-action primary">Sonraki Bölüm ›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/math/knot-invariants.js"></script>
+  <script src="js/engine/knot.js"></script>
+  <script src="js/engine/renderer.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
